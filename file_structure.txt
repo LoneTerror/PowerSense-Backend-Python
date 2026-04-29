@@ -1,0 +1,35 @@
+powersense-backend/
+├── api-gateway/                     # Nginx routing to your services
+│   └── nginx.conf                   
+│
+├── shared/                          # 📦 THE CENTRAL NERVOUS SYSTEM
+│   └── powersense_db/               # Shared internal Python package
+│       ├── __init__.py
+│       ├── database.py              # Centralized SQLAlchemy async engine
+│       ├── models/                  # Single source of truth for all tables
+│       │   ├── sensor.py            # [cite: 828]
+│       │   └── relay.py
+│       └── alembic/                 # Centralized migrations folder
+│           ├── versions/
+│           └── env.py
+│
+├── services/
+│   ├── telemetry-service/           # MICROSERVICE 1
+│   │   ├── app/
+│   │   │   ├── main.py              
+│   │   │   ├── api/v1/sensors.py    # Replaces routes/sensor.js [cite: 990, 991]
+│   │   │   └── websockets/
+│   │   ├── Dockerfile               # *Installs shared/powersense_db during build*
+│   │   └── requirements.txt         
+│   │
+│   └── device-service/              # MICROSERVICE 2
+│       ├── app/
+│       │   ├── main.py              
+│       │   ├── api/v1/relays.py     
+│       │   └── services/            # Replaces controllers/sensorController.js [cite: 840, 841]
+│       ├── Dockerfile               # *Installs shared/powersense_db during build*
+│       └── requirements.txt         
+│
+├── scripts/
+│   └── seed.py                      # Replaces scripts/seed.js [cite: 1000]
+└── docker-compose.yml               # Orchestrates the DB, Nginx, and both services

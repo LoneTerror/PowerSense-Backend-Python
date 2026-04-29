@@ -1,0 +1,28 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Sensitive data (Environment variables)
+.env
+.env.*
+
+# Database files
+*.sqlite3
+powersense_data/
+
+# IDEs and Tools
+.vscode/
+.idea/
+.DS_Store
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
