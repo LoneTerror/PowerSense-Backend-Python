@@ -5,5 +5,14 @@ alembic>=1.13.1
 asyncpg>=0.29.0
 pydantic>=2.6.3
 pydantic-settings>=2.2.1
+pydantic[email]
 websockets>=12.0
 python-dotenv>=1.0.1
+
+# Authentication dependencies
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+pyjwt==2.10.1
+
+# Mail Service dependencies
+resend

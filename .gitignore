@@ -13,6 +13,9 @@ env/
 .env
 .env.*
 
+# Logger files
+*logger/
+
 # Database files
 *.sqlite3
 powersense_data/
@@ -26,3 +29,7 @@ powersense_data/
 dist/
 build/
 *.egg-info/
+
+# DB seed file
+seed.py
+

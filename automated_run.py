@@ -103,14 +103,17 @@ def dependencies_installation():
 def alembic_upgrade():
     logger.info("⚙️ Running Alembic Database Migrations...")
     check_database()
-    alembic_path = os.path.join("venv", "Scripts", "alembic") if os.name == "nt" else os.path.join("venv", "bin", "alembic")
-    shared_db_path = os.path.join("shared", "powersense_db")
     
-    if os.path.exists(shared_db_path):
-        run_command(f"{alembic_path} upgrade head", cwd=shared_db_path)
+    # Locate the Alembic executable inside the virtual environment
+    alembic_path = os.path.join("venv", "Scripts", "alembic") if os.name == "nt" else os.path.join("venv", "bin", "alembic")
+    
+    # Check for the alembic.ini file in the project root instead of the old shared folder
+    if os.path.exists("alembic.ini"):
+        # Run the command directly from the root directory
+        run_command(f"{alembic_path} upgrade head")
         logger.info("✅ Database schema is up to date.")
     else:
-        logger.error(f"❌ Could not find {shared_db_path}.")
+        logger.error("❌ Could not find alembic.ini in the project root. Ensure you are running this from the correct folder.")
 
 def run_all_setup():
     logger.info("🚀 Running FULL automated setup...")
