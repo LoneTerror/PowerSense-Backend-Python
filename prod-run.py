@@ -29,21 +29,27 @@ def print_dashboard():
     print("\n" + "="*65 + "\n")
 
 def main():
-    # Keep the parser configuration intact so CLI flags don't break
+    # Keep your parser configuration intact
     parser = argparse.ArgumentParser(description="Start the PowerSense Cluster.")
     parser.add_argument('--docs', action='store_true', help="Ignored in headless production mode")
     args = parser.parse_args()
 
     print_dashboard()
 
-    # Dynamic Binary Resolver: Checks for local venv first, falls back to system path
+    # Dynamic Binary Resolver: Accounts for localized Pterodactyl pip binary bins
     if os.name == "nt":
         venv_uvicorn = os.path.join("venv", "Scripts", "uvicorn")
         uvicorn = venv_uvicorn if os.path.exists(venv_uvicorn) else "uvicorn"
     else:
-        # On Pterodactyl/Linux, if venv folder doesn't exist, call global system path 'uvicorn'
         venv_uvicorn = os.path.join("venv", "bin", "uvicorn")
-        uvicorn = venv_uvicorn if os.path.exists(venv_uvicorn) else "uvicorn"
+        local_user_uvicorn = "/home/container/.local/bin/uvicorn"
+        
+        if os.path.exists(venv_uvicorn):
+            uvicorn = venv_uvicorn
+        elif os.path.exists(local_user_uvicorn):
+            uvicorn = local_user_uvicorn  # <-- Safely catches Pterodactyl local installations
+        else:
+            uvicorn = "uvicorn"  # Global fallback
 
     # Worker Node Execution Config
     auth_cmd = [uvicorn, "src.auth.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
