@@ -89,17 +89,18 @@ async def lifespan(app: FastAPI):
 # APP INITIALIZATION
 # ==========================================
 active_servers = [
-    {"url": "http://127.0.0.1:8003", "description": "Direct Localhost"},
-    {"url": "/powersense/v1/users", "description": "API Gateway Route (Nginx)"}
+    {"url": "/", "description": "Current Host (Auto-Detect)"},
+    {"url": "http://127.0.0.1:8003", "description": "Direct Localhost"}
 ]
 
 # Pass the lifespan context manager into the FastAPI app
 app = FastAPI(
     title="PowerSense User Management Service",
     version="1.0.0",
-    docs_url="/docs" if ENABLE_DOCS else None,
+    docs_url="/v1/users/docs" if ENABLE_DOCS else None,
+    openapi_url="/v1/users/openapi.json" if ENABLE_DOCS else None,
     servers=active_servers,
-    lifespan=lifespan # <-- Attach it here
+    lifespan=lifespan
 )
 
 initialize_cors(app)

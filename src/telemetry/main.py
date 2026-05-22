@@ -22,7 +22,7 @@ ENABLE_DOCS = os.getenv("ENABLE_API_DOCS", "True").lower() == "true"
 USE_NGINX = os.getenv("USE_NGINX", "False").lower() == "true"
 
 # Define the routing options
-nginx_server = {"url": "/powersense/v1/sensors", "description": "API Gateway Route (Nginx)"}
+nginx_server = {"url": "/", "description": "Current Host (Auto-Detect)"}
 local_server = {"url": "http://127.0.0.1:8002", "description": "Direct Localhost"}
 
 # Swagger UI defaults to the FIRST item in the array
@@ -31,9 +31,9 @@ active_servers = [nginx_server, local_server] if USE_NGINX else [local_server, n
 app = FastAPI(
     title="PowerSense Telemetry Service",
     version="1.0.0",
-    docs_url="/docs" if ENABLE_DOCS else None,
-    redoc_url="/redoc" if ENABLE_DOCS else None,
-    openapi_url="/openapi.json" if ENABLE_DOCS else None,
+    docs_url="/v1/sensors/docs" if ENABLE_DOCS else None,
+    openapi_url="/v1/sensors/openapi.json" if ENABLE_DOCS else None,
+    redoc_url="/v1/sensors/redoc" if ENABLE_DOCS else None,
     servers=active_servers
 )
 
@@ -52,6 +52,6 @@ async def health_check():
 @app.get("/", include_in_schema=False)
 async def root_redirect():
     """Automatically redirects base URL visitors to the Swagger UI."""
-    return RedirectResponse(url="/docs")
+    return RedirectResponse(url="/v1/sensors/docs")
 
 app.include_router(telemetry_router)

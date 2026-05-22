@@ -14,7 +14,7 @@ ENABLE_DOCS = os.getenv("ENABLE_API_DOCS", "True").lower() == "true"
 USE_NGINX = os.getenv("USE_NGINX", "False").lower() == "true"
 
 # Define the routing options
-nginx_server = {"url": "/powersense", "description": "API Gateway Route (Nginx)"}
+nginx_server = {"url": "/", "description": "Current Host (Auto-Detect)"}
 local_server = {"url": "http://127.0.0.1:8000", "description": "Direct Localhost"}
 
 # Dynamically sort the servers array based on your .env file
@@ -23,7 +23,9 @@ active_servers = [nginx_server, local_server] if USE_NGINX else [local_server, n
 app = FastAPI(
     title="PowerSense Auth Service",
     version="1.0.0",
-    docs_url="/docs" if ENABLE_DOCS else None,
+    docs_url="/v1/auth/docs" if ENABLE_DOCS else None,
+    openapi_url="/v1/auth/openapi.json" if ENABLE_DOCS else None,
+    redoc_url=None, # Optional: Disable redoc or route it similarly
     servers=active_servers
 )
 

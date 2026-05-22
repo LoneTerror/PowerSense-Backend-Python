@@ -1,25 +1,36 @@
-# PowerSense Backend
+# PowerSense Core API ⚡
 
-An industrial-grade IoT Power Monitoring and Relay Control backend. 
+An industrial-grade, consumer-facing Smart Home IoT backend built with a 4-port FastAPI microservice architecture. 
 
-This repository has been migrated from a legacy Node.js monolith to a **Python FastAPI Microservices Monorepo** architecture, utilizing SQLAlchemy, Alembic, and PostgreSQL.
+PowerSense utilizes a Zero-Trust Role-Based Access Control (RBAC) system, fully isolated data telemetry, and an automated continuous deployment pipeline tailored for containerized environments (Pterodactyl/Docker) behind an Nginx reverse proxy.
 
-## 🏗️ Architecture
+---
 
-The backend is split into dedicated, scalable microservices sharing a centralized PostgreSQL database:
+## 🏗️ System Architecture
 
-* **Telemetry Service (Port 8002):** Handles high-frequency data ingestion and WebSocket broadcasting for the ESP8266 and Android dashboards.
-* **Device Service (Port 8001):** Manages relay configurations, state toggling, and logging.
-* **Shared DB Library:** A centralized `shared/powersense_db` module containing all SQLAlchemy ORM models and Alembic migration scripts to ensure a Single Source of Truth.
+The backend is decoupled into four highly specialized microservices communicating via a centralized PostgreSQL database.
 
-## ⚙️ Prerequisites
+| Service | Port | Description |
+| :--- | :--- | :--- |
+| **Auth Service** | `8000` | Manages JWT generation, user registration, and authentication flows. |
+| **Device Service** | `8001` | Handles IoT relay configurations and state toggling for smart home hardware. |
+| **Telemetry Service** | `8002` | High-frequency ingestion and retrieval of live sensor data (voltage, wattage). |
+| **User Service** | `8003` | Admin RBAC management, system route scraping, and profile modifications. |
 
-1.  **Python 3.10.x** must be installed and added to your system PATH.
-2.  **Docker** must be installed to run the PostgreSQL database.
+### Security & RBAC
+The system strictly enforces a 3-tier consumer security matrix:
+* `viewer`: Read-only access to sensor data and personal profile.
+* `default`: Standard smart-home user. Can toggle relays and view telemetry.
+* `admin`: Master access to all 23 system routes, user provisioning, and role modification.
 
-## 🐳 Starting the Database
+---
 
-Before running any backend code, you must start the PostgreSQL container. Based on the `.env` configuration, run the following Docker command:
+## 🛠️ Tech Stack
 
-```bash
-docker run --name postgres -e POSTGRES_USER=db-user -e POSTGRES_PASSWORD=db-password -e POSTGRES_DB=db-name -p 5432:5432 -d postgres
+* **Framework:** [FastAPI](https://fastapi.tiangolo.com/) (Python 3.10+)
+* **Server:** Uvicorn (ASGI)
+* **Database:** PostgreSQL
+* **ORM & Migrations:** SQLAlchemy (Async) + Alembic
+* **Deployment:** Nginx Proxy + Pterodactyl (Docker)
+
+---
