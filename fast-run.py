@@ -13,19 +13,19 @@ def print_dashboard(auto_docs_enabled: bool):
 
     print("\n 🔐 AUTH SERVICE (Port 8000)")
     print(" ----------------------------------------------------")
-    print("   Swagger UI : http://127.0.0.1:8000/docs")
+    print("   Swagger UI : http://127.0.0.1:8000/v1/auth/docs")
     
     print("\n 🔌 DEVICE SERVICE (Port 8001)")
     print(" ----------------------------------------------------")
-    print("   Swagger UI : http://127.0.0.1:8001/docs")
+    print("   Swagger UI : http://127.0.0.1:8001/v1/relays/docs")
 
     print("\n 📡 TELEMETRY SERVICE (Port 8002)")
     print(" ----------------------------------------------------")
-    print("   Swagger UI : http://127.0.0.1:8002/docs")
+    print("   Swagger UI : http://127.0.0.1:8002/v1/sensors/docs")
 
     print("\n 👤 USER SERVICE (Port 8003)")
     print(" ----------------------------------------------------")
-    print("   Swagger UI : http://127.0.0.1:8003/docs")
+    print("   Swagger UI : http://127.0.0.1:8003/v1/users/docs")
     
     print("\n" + "="*65)
     if auto_docs_enabled:
@@ -37,10 +37,10 @@ def print_dashboard(auto_docs_enabled: bool):
 def open_swagger_docs():
     """Opens all Swagger UI pages in the default web browser."""
     urls = [
-        "http://127.0.0.1:8000/docs",
-        "http://127.0.0.1:8001/docs",
-        "http://127.0.0.1:8002/docs",
-        "http://127.0.0.1:8003/docs"
+        "http://127.0.0.1:8000/v1/auth/docs",
+        "http://127.0.0.1:8001/v1/relays/docs",
+        "http://127.0.0.1:8002/v1/sensors/docs",
+        "http://127.0.0.1:8003/v1/users/docs"
     ]
     for url in urls:
         webbrowser.open_new_tab(url)

@@ -32,7 +32,7 @@ initialize_cors(app)
 app.middleware("http")(request_timing_middleware)
 app.add_exception_handler(Exception, generic_exception_handler)
 
-@app.get("/health", tags=["System"])
+@app.get("/v1/auth/health", tags=["System"])
 async def health_check():
     return {"status": "Auth Service Online"}
 

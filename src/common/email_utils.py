@@ -152,3 +152,49 @@ def send_password_reset_email(to_email: str, full_name: str, token: str):
         button_url=reset_link
     )
     dispatch_resend_email(to_email, "Action Required: Password Reset Request 🔑", html)
+
+
+def send_profile_update_email(to_email: str, full_name: str, ip_address: str):
+    """Dispatched when a user changes their name or profile details."""
+    display = full_name if full_name else "User"
+    update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    location = get_location_from_ip(ip_address) # Lookup runs securely in background thread
+    
+    body = f"""
+    Your identity parameters (Profile Information) were recently updated. <br><br>
+    <div style="background-color: #080a10; padding: 15px; border-radius: 4px; border-left: 2px solid #00f0ff; font-family: monospace; font-size: 14px; margin-bottom: 20px;">
+        <span style="color: #4e6a7c;">TIMESTAMP :</span> <span style="color: #cdd6f4;">{update_time}</span><br>
+        <span style="color: #4e6a7c;">IP_ADDRESS:</span> <span style="color: #00f0ff;">{ip_address}</span><br>
+        <span style="color: #4e6a7c;">LOCATION  :</span> <span style="color: #cdd6f4;">{location}</span>
+    </div>
+    If you authorized this modification, no further action is required.
+    """
+    
+    html = generate_cyber_html(display, body)
+    dispatch_resend_email(to_email, "System Notice: Profile Updated 👤", html)
+
+
+def send_password_changed_email(to_email: str, full_name: str, ip_address: str):
+    """Dispatched upon a successful password change."""
+    display = full_name if full_name else "User"
+    change_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    location = get_location_from_ip(ip_address)
+    frontend_url = os.getenv("FRONTEND_URL", "https://powersense.top").rstrip("/")
+    
+    body = f"""
+    The master password for your grid access has been successfully changed. <br><br>
+    <div style="background-color: #080a10; padding: 15px; border-radius: 4px; border-left: 2px solid #ff003c; font-family: monospace; font-size: 14px; margin-bottom: 20px;">
+        <span style="color: #4e6a7c;">TIMESTAMP :</span> <span style="color: #cdd6f4;">{change_time}</span><br>
+        <span style="color: #4e6a7c;">IP_ADDRESS:</span> <span style="color: #00f0ff;">{ip_address}</span><br>
+        <span style="color: #4e6a7c;">LOCATION  :</span> <span style="color: #cdd6f4;">{location}</span>
+    </div>
+    If you did NOT perform this action, your credentials have been compromised. Immediately secure your account using the link below.
+    """
+    
+    html = generate_cyber_html(
+        display_name=display, 
+        body_text=body,
+        button_text="Secure Account Now",
+        button_url=f"{frontend_url}/forgot-password"
+    )
+    dispatch_resend_email(to_email, "SECURITY ALERT: Password Modified ⚠️", html)

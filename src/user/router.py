@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -6,6 +6,9 @@ from src.database.client import get_db
 from src.database.models import User
 from src.common import security
 from src.auth.dependencies import get_current_token_payload
+
+# Import the email triggers
+from src.common.email_utils import send_profile_update_email, send_password_changed_email
 
 # Import the schemas from both domains
 from src.auth import schemas as auth_schemas
@@ -36,10 +39,12 @@ async def get_my_profile(
 @router.put("/me", response_model=auth_schemas.UserResponse)
 async def update_my_profile(
     payload: user_schemas.UserUpdate,
+    request: Request,
+    background_tasks: BackgroundTasks,
     token_payload: dict = Depends(get_current_token_payload),
     db: AsyncSession = Depends(get_db)
 ):
-    """PUT: Update the logged-in user's general details."""
+    """PUT: Update the logged-in user's general details and fire notification."""
     email = token_payload.get("sub")
     query = select(User).where(User.email == email)
     result = await db.execute(query)
@@ -52,15 +57,28 @@ async def update_my_profile(
     await db.commit()
     await db.refresh(user)
     
+    # Extract True Device IP from Nginx Reverse Proxy Header
+    client_ip = request.headers.get("X-Real-IP", request.client.host)
+
+    # Dispatch the Resend email off the main thread to prevent Android UI lag
+    background_tasks.add_task(
+        send_profile_update_email,
+        to_email=user.email,
+        full_name=user.full_name,
+        ip_address=client_ip
+    )
+    
     return user
 
 @router.post("/me/change-password", response_model=dict)
 async def change_my_password(
     payload: user_schemas.ChangePasswordRequest,
+    request: Request,
+    background_tasks: BackgroundTasks,
     token_payload: dict = Depends(get_current_token_payload),
     db: AsyncSession = Depends(get_db)
 ):
-    """POST: Execute the action of changing the user's password."""
+    """POST: Execute password change and trigger critical security alert."""
     email = token_payload.get("sub")
     query = select(User).where(User.email == email)
     result = await db.execute(query)
@@ -74,5 +92,16 @@ async def change_my_password(
         
     user.hashed_password = security.get_password_hash(payload.new_password)
     await db.commit()
+    
+    # Extract True Device IP from Nginx Reverse Proxy Header
+    client_ip = request.headers.get("X-Real-IP", request.client.host)
+
+    # Dispatch the Resend email off the main thread
+    background_tasks.add_task(
+        send_password_changed_email,
+        to_email=user.email,
+        full_name=user.full_name,
+        ip_address=client_ip
+    )
     
     return {"message": "Password updated successfully."}
