@@ -88,6 +88,7 @@ async def lifespan(app: FastAPI):
 # ==========================================
 # APP INITIALIZATION
 # ==========================================
+# Force Auto-Detect as the primary default for Swagger UI
 active_servers = [
     {"url": "/", "description": "Current Host (Auto-Detect)"},
     {"url": "http://127.0.0.1:8003", "description": "Direct Localhost"}

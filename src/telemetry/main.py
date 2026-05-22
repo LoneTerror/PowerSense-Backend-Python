@@ -21,12 +21,11 @@ load_dotenv()
 ENABLE_DOCS = os.getenv("ENABLE_API_DOCS", "True").lower() == "true"
 USE_NGINX = os.getenv("USE_NGINX", "False").lower() == "true"
 
-# Define the routing options
-nginx_server = {"url": "/", "description": "Current Host (Auto-Detect)"}
-local_server = {"url": "http://127.0.0.1:8002", "description": "Direct Localhost"}
-
-# Swagger UI defaults to the FIRST item in the array
-active_servers = [nginx_server, local_server] if USE_NGINX else [local_server, nginx_server]
+# Force Auto-Detect as the primary default for Swagger UI
+active_servers = [
+    {"url": "/", "description": "Current Host (Auto-Detect)"},
+    {"url": "http://127.0.0.1:8002", "description": "Direct Localhost"}
+]
 
 app = FastAPI(
     title="PowerSense Telemetry Service",
