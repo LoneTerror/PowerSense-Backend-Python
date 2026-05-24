@@ -1,5 +1,6 @@
 import os
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 from sqlalchemy import select
@@ -20,6 +21,9 @@ from src.database.models import RolePolicy
 load_dotenv()
 
 ENABLE_DOCS = os.getenv("ENABLE_DOCS", "True").lower() == "true"
+
+# This tells FastAPI to serve actual files from the 'static' folder, for Profile Pictures
+app.mount("/v1/users/static", StaticFiles(directory="static"), name="static")
 
 # ==========================================
 # DATABASE SEEDING LOGIC

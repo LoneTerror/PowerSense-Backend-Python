@@ -1,3 +1,7 @@
+import os
+import shutil
+import uuid
+from fastapi import UploadFile, File
 from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -105,3 +109,42 @@ async def change_my_password(
     )
     
     return {"message": "Password updated successfully."}
+
+
+# Create a local directory inside the Docker container to store images
+UPLOAD_DIR = "static/avatars"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+@router.post("/me/avatar", response_model=dict)
+async def upload_profile_picture(
+    file: UploadFile = File(...),
+    token_payload: dict = Depends(get_current_token_payload),
+    db: AsyncSession = Depends(get_db)
+):
+    """POST: Securely upload and store a profile picture."""
+    # 1. Validate it is actually an image
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Invalid file type. Images only.")
+
+    # 2. Generate a random UUID filename (prevents users from overwriting each other's files)
+    file_extension = file.filename.split(".")[-1]
+    secure_filename = f"{uuid.uuid4()}.{file_extension}"
+    file_path = os.path.join(UPLOAD_DIR, secure_filename)
+
+    # 3. Stream the file to the hard drive
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # 4. Construct the URL that Android will use to download it
+    # We route this through the existing /v1/users/ Nginx block!
+    public_url = f"https://backend.powersense.top/v1/users/static/avatars/{secure_filename}"
+
+    # 5. Save the URL to the Database
+    email = token_payload.get("sub")
+    query = select(User).where(User.email == email)
+    user = (await db.execute(query)).scalar_one()
+    
+    user.avatar_url = public_url
+    await db.commit()
+
+    return {"message": "Avatar updated successfully", "avatar_url": public_url}

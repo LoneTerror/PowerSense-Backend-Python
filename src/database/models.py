@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, Float, DateTime, String, Boolean, ForeignKey, JSON
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from src.database.client import Base
 
 # ==========================================
@@ -21,6 +22,8 @@ class RelayConfig(Base):
     __tablename__ = "relay_config"
 
     id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    owner = relationship("User", backref="relays")
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
 
@@ -53,6 +56,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     full_name = Column(String, nullable=True)
+    avatar_url = Column(String, nullable=True)
     
     # RBAC Core
     role = Column(String, default="viewer", nullable=False) 
