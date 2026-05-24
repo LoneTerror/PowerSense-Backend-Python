@@ -8,6 +8,7 @@ pydantic-settings>=2.2.1
 pydantic[email]
 websockets>=12.0
 python-dotenv>=1.0.1
+python-multipart==0.0.29
 
 # Authentication dependencies
 passlib[bcrypt]==1.7.4
