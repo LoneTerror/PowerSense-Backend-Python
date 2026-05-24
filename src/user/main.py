@@ -22,8 +22,6 @@ load_dotenv()
 
 ENABLE_DOCS = os.getenv("ENABLE_DOCS", "True").lower() == "true"
 
-# This tells FastAPI to serve actual files from the 'static' folder, for Profile Pictures
-app.mount("/v1/users/static", StaticFiles(directory="static"), name="static")
 
 # ==========================================
 # DATABASE SEEDING LOGIC
@@ -118,3 +116,5 @@ async def health_check():
 
 app.include_router(user_router)
 app.include_router(admin_router)
+# This tells FastAPI to serve actual files from the 'static' folder, for Profile Pictures
+app.mount("/v1/users/static", StaticFiles(directory="static"), name="static")
