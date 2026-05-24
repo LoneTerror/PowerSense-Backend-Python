@@ -1,8 +1,8 @@
-"""Added relay owner and avatar url
+"""Add relay owner and avatar
 
-Revision ID: 56f4a24fd51a
+Revision ID: 60862e7ba531
 Revises: 83b2c7a5f988
-Create Date: 2026-05-24 18:24:59.684715
+Create Date: 2026-05-24 19:09:48.408877
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '56f4a24fd51a'
+revision: str = '60862e7ba531'
 down_revision: Union[str, None] = '83b2c7a5f988'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
