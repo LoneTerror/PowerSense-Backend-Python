@@ -14,7 +14,14 @@ if not DATABASE_URL:
     raise ValueError("🚨 CRITICAL: DATABASE_URL is missing! Check your .env file.")
 
 # Create the engine using the secure URL
-engine = create_async_engine(DATABASE_URL, echo=False, pool_size=20, max_overflow=10)
+engine = create_async_engine(
+    DATABASE_URL, 
+    echo=False, 
+    pool_size=20, 
+    max_overflow=10,
+    pool_pre_ping=True,   
+    pool_recycle=1800     
+)
 AsyncSessionLocal = async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
 Base = declarative_base()
 
