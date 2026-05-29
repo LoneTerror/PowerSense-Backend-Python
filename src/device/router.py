@@ -65,7 +65,7 @@ async def delete_relay(
     """Delete a switch/relay from App/Web"""
     result = await service.delete_config(relay_id, user_id, db)
     
-    # If the service failed (e.g., wrong user or bad ID), returns a 404 Error to Android
+    # If the service failed (e.g., wrong user or bad ID), returns proper 404 Error to Android
     if not result["success"]:
         raise HTTPException(status_code=404, detail=result["message"])
         
