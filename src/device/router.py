@@ -30,7 +30,7 @@ async def get_current_user_id(
 @router.get("/config", response_model=List[RelayConfigResponse])
 async def get_relay_config(user_id: int = Depends(get_current_user_id), db: AsyncSession = Depends(get_db)):
     """Get detailed metadata ONLY for the logged-in user's relays"""
-    # Must update `service.get_all_configs` to accept user_id and filter using: select(RelayConfig).where(RelayConfig.owner_id == user_id)
+    # Updated `service.get_all_configs` to accept user_id and filter using: select(RelayConfig).where(RelayConfig.owner_id == user_id)
     return await service.get_all_configs(user_id, db)
 
 @router.post("/{relay_id}/config")
@@ -41,7 +41,7 @@ async def update_relay_config(
     db: AsyncSession = Depends(get_db)
 ):
     """Update names/descriptions from App/Web"""
-    # Update `service.update_config` to ensure the relay belongs to user_id before updating
+    # Updated `service.update_config` to ensure the relay belongs to user_id before updating
     return await service.update_config(relay_id, user_id, payload, db)
 
 @router.post("/{relay_id}/toggle")
@@ -52,7 +52,7 @@ async def toggle_relay(
     db: AsyncSession = Depends(get_db)
 ):
     """Standard Toggle Endpoint (Logs activity to DB)"""
-    # Update `service.log_relay_toggle` to ensure the relay belongs to user_id before toggling
+    # Updated `service.log_relay_toggle` to ensure the relay belongs to user_id before toggling
     await service.log_relay_toggle(relay_id, user_id, payload.state, db)
     return {"success": True, "newState": payload.state}
 
@@ -65,9 +65,9 @@ async def delete_relay(
     """Delete a switch/relay from App/Web"""
     result = await service.delete_config(relay_id, user_id, db)
     
-    # If the service failed (e.g., wrong user or bad ID), return a clean 404 Error to Android
+    # If the service failed (e.g., wrong user or bad ID), returns a clean 404 Error to Android
     if not result["success"]:
         raise HTTPException(status_code=404, detail=result["message"])
         
-    # Return the clean confirmation to Android
+    # Returns the clean confirmation to Android
     return {"detail": result["message"]}
