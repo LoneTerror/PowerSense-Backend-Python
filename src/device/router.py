@@ -55,3 +55,19 @@ async def toggle_relay(
     # Update `service.log_relay_toggle` to ensure the relay belongs to user_id before toggling
     await service.log_relay_toggle(relay_id, user_id, payload.state, db)
     return {"success": True, "newState": payload.state}
+
+@router.delete("/{relay_id}")
+async def delete_relay(
+    relay_id: int, 
+    user_id: int = Depends(get_current_user_id), 
+    db: AsyncSession = Depends(get_db)
+):
+    """Delete a switch/relay from App/Web"""
+    result = await service.delete_config(relay_id, user_id, db)
+    
+    # If the service failed (e.g., wrong user or bad ID), return a clean 404 Error to Android
+    if not result["success"]:
+        raise HTTPException(status_code=404, detail=result["message"])
+        
+    # Return the clean confirmation to Android
+    return {"detail": result["message"]}

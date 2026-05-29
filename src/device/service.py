@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy import delete
 from src.database.models import RelayConfig, RelayLog
 from src.device.schemas import RelayConfigUpdate
 
@@ -40,3 +41,15 @@ async def log_relay_toggle(relay_id: int, user_id: int, state: bool, db: AsyncSe
     )
     db.add(action_log)
     await db.commit()
+
+async def delete_config(relay_id: int, user_id: int, db: AsyncSession):
+    # 🔒 SECURE: Only deletes if the relay ID exists AND the owner ID matches the logged-in user
+    stmt = delete(RelayConfig).where(RelayConfig.id == relay_id, RelayConfig.owner_id == user_id)
+    
+    result = await db.execute(stmt)
+    
+    if result.rowcount == 0:
+        return {"success": False, "message": "Switch not found or you are not authorized to delete it."}
+        
+    await db.commit()
+    return {"success": True, "message": f"Switch {relay_id} deleted successfully."}
