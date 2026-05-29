@@ -43,7 +43,7 @@ async def log_relay_toggle(relay_id: int, user_id: int, state: bool, db: AsyncSe
     await db.commit()
 
 async def delete_config(relay_id: int, user_id: int, db: AsyncSession):
-    # 🔒 SECURE: Only deletes if the relay ID exists AND the owner ID matches the logged-in user
+    # 🔒 SECURE: Only deletes if the relay ID exists AND the owner ID matches the logged-in user (idempotent check)
     stmt = delete(RelayConfig).where(RelayConfig.id == relay_id, RelayConfig.owner_id == user_id)
     
     result = await db.execute(stmt)
