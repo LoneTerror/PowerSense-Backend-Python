@@ -11,6 +11,7 @@ class SensorData(Base):
     __tablename__ = "sensor_data"
 
     id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     voltage_val = Column(Float, nullable=False)
     current_val = Column(Float, nullable=False)
     inst_power_val = Column(Float, nullable=False)
