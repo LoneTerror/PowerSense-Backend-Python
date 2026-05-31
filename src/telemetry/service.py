@@ -98,6 +98,10 @@ async def calculate_relay_usage(user_id: int, interval_hours: int, db: AsyncSess
 
         # Convert to hours and map to frontend JSON keys (relay1Hours, relay2Hours)
         hours_on = total_seconds / 3600.0
+        # If the appliance is currently ON, guarantee at least 0.01 hours
+        # This prevents the Android Pie Chart from hiding for the first 36 seconds!
+        if is_on and hours_on < 0.01:
+            hours_on = 0.01
         usage_data[f"relay{i+1}Hours"] = round(hours_on, 2)
 
     # Fill remaining slots with 0.0 if user has fewer than 2 relays, so Android doesn't crash
