@@ -95,20 +95,8 @@ async def get_relay_usage(
     user_id: int = Depends(get_current_user_id), # 🔒 Inject User ID
     db: AsyncSession = Depends(get_db)
 ):
-    """Dynamically fetches the relays owned by THIS user."""
-    # 🔒 SECURE: Fetch only the relays this user owns to populate the Android UI
-    query = select(RelayConfig).where(RelayConfig.owner_id == user_id)
-    result = await db.execute(query)
-    user_relays = result.scalars().all()
+    """Calculates true appliance ON-time based on RelayLog time deltas."""
+    # 🚀 Outsource the heavy time-delta calculation to the service layer!
+    usage_data = await service.calculate_relay_usage(user_id, interval, db)
     
-    usage_data = {}
-    for i, relay in enumerate(user_relays):
-        # We will dynamically generate the JSON keys Android expects (relay1, relay2)
-        # In the future, you will map this to the RelayLog table for actual time calculation!
-        usage_data[f"relay{i+1}"] = 0.0  
-        
-    # Fallbacks so Ktor doesn't crash if the user has no relays yet
-    if "relay1" not in usage_data: usage_data["relay1"] = 0.0
-    if "relay2" not in usage_data: usage_data["relay2"] = 0.0
-
     return usage_data
