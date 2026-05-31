@@ -42,14 +42,22 @@ async def log_relay_toggle(relay_id: int, user_id: int, state: bool, db: AsyncSe
     db.add(action_log)
     await db.commit()
 
+
 async def delete_config(relay_id: int, user_id: int, db: AsyncSession):
-    # 🔒 SECURE: Only deletes if the relay ID exists AND the owner ID matches the logged-in user (idempotent check)
-    stmt = delete(RelayConfig).where(RelayConfig.id == relay_id, RelayConfig.owner_id == user_id)
+    # Firstly, check if the relay actually exists AND belongs to the user
+    check_stmt = select(RelayConfig).where(RelayConfig.id == relay_id, RelayConfig.owner_id == user_id)
+    result = await db.execute(check_stmt)
+    relay = result.scalar_one_or_none()
     
-    result = await db.execute(stmt)
-    
-    if result.rowcount == 0:
+    if not relay:
         return {"success": False, "message": "Switch not found or you are not authorized to delete it."}
-        
+
+    # Delete all logs associated with this relay first
+    await db.execute(delete(RelayLog).where(RelayLog.relay_id == relay_id))
+    
+    # After the logs are gone, it is safe to delete the actual switch
+    await db.execute(delete(RelayConfig).where(RelayConfig.id == relay_id))
+    
     await db.commit()
+    
     return {"success": True, "message": f"Switch {relay_id} deleted successfully."}
