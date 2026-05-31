@@ -102,9 +102,12 @@ async def calculate_relay_usage(user_id: int, interval_hours: int, db: AsyncSess
         # This prevents the Android Pie Chart from hiding for the first 36 seconds!
         if is_on and hours_on < 0.01:
             hours_on = 0.01
+        usage_data[f"relay{i+1}"] = round(hours_on, 2)
         usage_data[f"relay{i+1}Hours"] = round(hours_on, 2)
 
     # Fill remaining slots with 0.0 if user has fewer than 2 relays, so Android doesn't crash
+    if "relay1" not in usage_data: usage_data["relay1"] = 0.0
+    if "relay2" not in usage_data: usage_data["relay2"] = 0.0
     if "relay1Hours" not in usage_data: usage_data["relay1Hours"] = 0.0
     if "relay2Hours" not in usage_data: usage_data["relay2Hours"] = 0.0
 
