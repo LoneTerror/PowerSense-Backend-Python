@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, asc, desc
 from src.database.models import SensorData, RelayLog, RelayConfig
@@ -44,17 +44,19 @@ async def save_telemetry(user_id: int, data: SensorDataCreate, db: AsyncSession)
 
 async def calculate_relay_usage(user_id: int, interval_hours: int, db: AsyncSession) -> dict:
     """Calculates true appliance ON-time based on RelayLog time deltas."""
-    now = datetime.utcnow()
+    
+    # Using datetime.now(timezone.utc) instead of datetime.utcnow()
+    now = datetime.now(timezone.utc)
     start_time_window = now - timedelta(hours=interval_hours)
 
-    # 1. Fetch the user's real devices
+    # Fetch the user's real devices
     relays_query = select(RelayConfig).where(RelayConfig.owner_id == user_id).order_by(RelayConfig.id)
     user_relays = (await db.execute(relays_query)).scalars().all()
 
     usage_data = {}
 
     for i, relay in enumerate(user_relays):
-        # 2. Get the last known state BEFORE the time window
+        # Get the last known state BEFORE the time window
         last_state_query = (
             select(RelayLog)
             .where(RelayLog.relay_id == relay.id)
@@ -68,7 +70,7 @@ async def calculate_relay_usage(user_id: int, interval_hours: int, db: AsyncSess
         current_on_time = start_time_window if is_on else None
         total_seconds = 0.0
 
-        # 3. Fetch all toggle events INSIDE the time window
+        # Fetch all toggle events INSIDE the time window
         logs_query = (
             select(RelayLog)
             .where(RelayLog.relay_id == relay.id)
@@ -77,7 +79,7 @@ async def calculate_relay_usage(user_id: int, interval_hours: int, db: AsyncSess
         )
         logs_in_window = (await db.execute(logs_query)).scalars().all()
 
-        # 4. Calculate exact time deltas
+        # Calculate exact time deltas
         for log in logs_in_window:
             if log.state == True and not is_on:
                 # Appliance turned ON
@@ -90,7 +92,7 @@ async def calculate_relay_usage(user_id: int, interval_hours: int, db: AsyncSess
                     total_seconds += (log.timestamp - current_on_time).total_seconds()
                     current_on_time = None
 
-        # 5. If it is STILL running right now, calculate time up to this exact second
+        # If it is STILL running right now, calculate time up to this exact second
         if is_on and current_on_time:
             total_seconds += (now - current_on_time).total_seconds()
 
