@@ -18,3 +18,13 @@ class SensorDataResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+
+class TariffUpdate(BaseModel):
+    rate_per_kwh: float
+    currency: str = "INR"
+
+class TargetUpdate(BaseModel):
+    target_monthly_kwh: float
+    target_monthly_cost: float

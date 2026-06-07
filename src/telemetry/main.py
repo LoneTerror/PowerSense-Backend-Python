@@ -8,6 +8,8 @@ from sqlalchemy.exc import IntegrityError
 from dotenv import load_dotenv
 
 from src.telemetry.router import router as telemetry_router
+from src.telemetry import notifications_router
+from src.telemetry import insights_router
 from src.common.cors_setup import initialize_cors
 from src.common.middleware import (
     request_timing_middleware,
@@ -54,3 +56,5 @@ async def root_redirect():
     return RedirectResponse(url="/v1/sensors/docs")
 
 app.include_router(telemetry_router)
+app.include_router(insights_router.router)
+app.include_router(notifications_router.router)
