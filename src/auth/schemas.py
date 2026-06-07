@@ -26,7 +26,8 @@ class UserResponse(BaseModel):
     role: str
     is_active: bool
     created_at: datetime
-
+    avatar_url: Optional[str] = None
+    
     class Config:
         from_attributes = True
 
