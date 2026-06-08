@@ -28,6 +28,7 @@ class RelayConfig(Base):
     owner = relationship("User", backref="relays")
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
+    desired_state = Column(Boolean, default=False)
 
 class RelayLog(Base):
     __tablename__ = "relay_log"
@@ -167,3 +168,12 @@ class MLPrediction(Base):
     required_daily_reduction_kwh = Column(Float, default=0.0) 
     
     model_version = Column(String, default="xgboost-v1.0")
+
+class HardwareDevice(Base):
+    __tablename__ = "hardware_devices"
+
+    id = Column(String, primary_key=True, index=True) # e.g., "NODE_A1B2C3"
+    owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    hashed_secret = Column(String, nullable=False)    # Bcrypt hash of the hardware token
+    is_active = Column(Boolean, default=True)         # Master kill-switch
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

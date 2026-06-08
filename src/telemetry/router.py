@@ -1,3 +1,5 @@
+import secrets
+from passlib.context import CryptContext
 from fastapi import APIRouter, Query, Depends, HTTPException
 from datetime import datetime, timedelta
 from sqlalchemy import select
@@ -6,9 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # Import our global auth extractors!
 from src.auth.dependencies import get_current_token_payload, get_current_user_id
 from src.database.client import get_db
-from src.database.models import SensorData, RelayConfig
+from src.database.models import SensorData, RelayConfig, HardwareDevice
 from src.telemetry.schemas import SensorDataResponse
 from src.telemetry import service
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 router = APIRouter(
     prefix="/v1/sensors",
@@ -100,3 +104,29 @@ async def get_relay_usage(
     usage_data = await service.calculate_relay_usage(user_id, interval, db)
     
     return usage_data
+
+@router.post("/provision-hardware")
+async def provision_new_device(
+    user_id: int = Depends(get_current_user_id), # 🔒 Automatically links hardware to logged-in user
+    db: AsyncSession = Depends(get_db)
+):
+    """Generates a permanent API key for a new ESP8266 unit."""
+    raw_token = secrets.token_hex(32) 
+    device_id = f"NODE_{secrets.token_hex(4).upper()}"
+    
+    hashed_token = pwd_context.hash(raw_token)
+    
+    new_device = HardwareDevice(
+        id=device_id, 
+        owner_id=user_id, 
+        hashed_secret=hashed_token
+    )
+    db.add(new_device)
+    await db.commit()
+    
+    # ⚠️ Return the string exactly as the ESP8266 needs it
+    return {
+        "device_id": device_id,
+        "esp8266_hardware_token": f"{device_id}:{raw_token}",
+        "message": "Copy this token to your ESP8266 code. The backend only saves the hash!"
+    }

@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from src.telemetry.router import router as telemetry_router
 from src.telemetry import notifications_router
 from src.telemetry import insights_router
+from src.telemetry.ws_router import router as ws_router
 from src.common.cors_setup import initialize_cors
 from src.common.middleware import (
     request_timing_middleware,
@@ -58,3 +59,6 @@ async def root_redirect():
 app.include_router(telemetry_router)
 app.include_router(insights_router.router)
 app.include_router(notifications_router.router)
+# 🚀 NEW: Register the Hardware WebSocket Gateway 
+# Prefix matches Nginx's path lookup and makes the absolute endpoint: /v1/ws/device
+app.include_router(ws_router, prefix="/v1", tags=["Hardware WebSocket"])
