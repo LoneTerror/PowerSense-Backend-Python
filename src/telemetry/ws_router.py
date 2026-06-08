@@ -89,33 +89,53 @@ async def hardware_gateway(websocket: WebSocket, db: AsyncSession = Depends(get_
             data = json.loads(payload)
             
             if data.get("type") == "SENSOR_DATA":
-                # Save to PostgreSQL matching your exact SensorData model
-                new_reading = SensorData(
-                    owner_id=device.owner_id,
-                    voltage_val=float(data.get("voltage", 0.0)),
-                    current_val=float(data.get("current", 0.0)),
-                    inst_power_val=float(data.get("power", 0.0)),
-                    avg_current_val=float(data.get("avg_current", 0.0)),
-                    avg_power_val=float(data.get("avg_power", 0.0))
-                )
-                db.add(new_reading)
-                await db.commit()
+                try:
+                    new_reading = SensorData(
+                        owner_id=device.owner_id,
+                        voltage_val=float(data.get("voltage", 0.0)),
+                        current_val=float(data.get("current", 0.0)),
+                        inst_power_val=float(data.get("power", 0.0)),
+                        avg_current_val=float(data.get("avg_current", 0.0)),
+                        avg_power_val=float(data.get("avg_power", 0.0))
+                    )
+                    db.add(new_reading)
+                    await db.commit()
+                except Exception as db_err:
+                    print(f"❌ [{device.id}] Failed to save sensor data: {db_err}")
+                    await db.rollback()
+                    # Don't re-raise — a failed DB write should never kill the connection
                 
             elif data.get("type") == "RELAY_STATUS":
                 print(f"🔄 [{device.id}] Status Update -> Relay 1: {data.get('relay1')} | Relay 2: {data.get('relay2')}")
             
             elif data.get("type") == "SYNC_REQUEST":
-                # Look up the current desired states for this device
-                # (Simplified lookup example - adjust based on your table relations)
-                r1 = await db.execute(select(RelayConfig.desired_state).where(RelayConfig.id == 1))
-                r2 = await db.execute(select(RelayConfig.desired_state).where(RelayConfig.id == 2))
-    
-                sync_payload = {
-                    "type": "SYNC_RESPONSE",
-                    "relay1": r1.scalar() or False,
-                    "relay2": r2.scalar() or False
-                }
-                await websocket.send_json(sync_payload)
+                try:
+                    # Fetch this user's actual relay rows ordered by id ascending
+                    # so relay1 = lowest id, relay2 = second lowest — no hardcoding
+                    relays_result = await db.execute(
+                        select(RelayConfig)
+                        .where(RelayConfig.owner_id == device.owner_id)
+                        .order_by(RelayConfig.id.asc())
+                        .limit(2)
+                    )
+                    relays = relays_result.scalars().all()
+
+                    relay1_state = bool(relays[0].desired_state) if len(relays) > 0 else False
+                    relay2_state = bool(relays[1].desired_state) if len(relays) > 1 else False
+
+                    sync_payload = {
+                        "type": "SYNC_RESPONSE",
+                        "relay1": relay1_state,
+                        "relay2": relay2_state
+                    }
+                    await websocket.send_json(sync_payload)
+                    print(f"✅ [{device.id}] SYNC_RESPONSE sent -> R1:{relay1_state} (id:{relays[0].id if relays else 'N/A'}) | R2:{relay2_state} (id:{relays[1].id if len(relays) > 1 else 'N/A'})")
+
+                except Exception as sync_err:
+                    print(f"❌ [{device.id}] SYNC_REQUEST failed: {sync_err}")
+                    await db.rollback()
+                    # Send safe defaults so the ESP8266 doesn't hang waiting for a response
+                    await websocket.send_json({"type": "SYNC_RESPONSE", "relay1": False, "relay2": False})
                 
     except WebSocketDisconnect:
         print(f"⚠️ [{device.id}] Hardware Disconnected.")
@@ -123,6 +143,7 @@ async def hardware_gateway(websocket: WebSocket, db: AsyncSession = Depends(get_
     except Exception as e:
         print(f"❌ WebSocket Error: {str(e)}")
         await db.rollback()
+        manager.disconnect(device.id)  # Also clean up manager on unexpected errors
 
 # --- 5. Resolve User ID Dependency ---
 async def get_current_user_id(
@@ -142,34 +163,40 @@ async def get_current_user_id(
 # --- 6. Android App Trigger ---
 @router.post("/ws/relays/toggle")
 async def toggle_relay(
-    payload: RelayToggleRequest, 
+    payload: RelayToggleRequest,
     db: AsyncSession = Depends(get_db),
     user_id: int = Depends(get_current_user_id)
 ):
-    # 1. Update the 'Desired State' in DB first
-    # Assuming RelayConfig.id matches the payload.relay ID
-    result = await db.execute(select(RelayConfig).where(RelayConfig.id == payload.relay))
-    relay = result.scalar_one_or_none()
-    
-    if relay:
-        relay.desired_state = payload.state # Ensure this column exists in RelayConfig
-        await db.commit()
+    # Fetch all relays for this user ordered by id, pick by 1-based index
+    relays_result = await db.execute(
+        select(RelayConfig)
+        .where(RelayConfig.owner_id == user_id)
+        .order_by(RelayConfig.id.asc())
+    )
+    relays = relays_result.scalars().all()
 
-    # 2. Dispatch command
+    # payload.relay is 1 or 2 (position), map to actual DB row
+    relay_index = payload.relay - 1  # Convert to 0-based index
+    if relay_index < 0 or relay_index >= len(relays):
+        raise HTTPException(status_code=404, detail=f"Relay {payload.relay} not found for this user.")
+
+    relay = relays[relay_index]
+    relay.desired_state = payload.state
+    await db.commit()
+
     hardware_command = {"type": "COMMAND", "relay": payload.relay, "state": payload.state}
     success = await manager.send_command(payload.device_id, hardware_command)
-    
-    # 3. Log state change (Audit Trail)
+
     try:
-        action_log = RelayLog(relay_id=payload.relay, state=payload.state, action_by=f"User {user_id}")
+        action_log = RelayLog(relay_id=relay.id, state=payload.state, action_by=f"User {user_id}")
         db.add(action_log)
         await db.commit()
     except Exception as e:
         print(f"⚠️ Audit log failed: {e}")
-        
-    # 4. Return success even if offline (Queued)
+
     return {
-        "status": "success", 
-        "queued": not success, 
+        "status": "success",
+        "queued": not success,
+        "relay_db_id": relay.id,
         "message": "Command dispatched or queued for sync."
     }
