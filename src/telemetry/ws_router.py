@@ -85,10 +85,25 @@ async def hardware_gateway(websocket: WebSocket, db: AsyncSession = Depends(get_
     
     try:
         while True:
-            payload = await websocket.receive_text()
-            data = json.loads(payload)
+            try:
+                payload = await websocket.receive_text()
+            except Exception as recv_err:
+                # This will tell us EXACTLY what's killing the connection
+                print(f"💀 [{device.id}] receive_text() FAILED: {type(recv_err).__name__}: {recv_err}")
+                raise  # Re-raise so the outer handler still catches WebSocketDisconnect
+
+            print(f"📨 [{device.id}] Raw message received: {payload[:200]}")  # Log first 200 chars
+
+            try:
+                data = json.loads(payload)
+            except json.JSONDecodeError as je:
+                print(f"⚠️ [{device.id}] Invalid JSON received: {payload[:100]} | Error: {je}")
+                continue  # Skip bad messages, don't kill connection
             
-            if data.get("type") == "SENSOR_DATA":
+            msg_type = data.get("type")
+            print(f"🔍 [{device.id}] Processing message type: {msg_type}")
+
+            if msg_type == "SENSOR_DATA":
                 try:
                     new_reading = SensorData(
                         owner_id=device.owner_id,
@@ -101,17 +116,14 @@ async def hardware_gateway(websocket: WebSocket, db: AsyncSession = Depends(get_
                     db.add(new_reading)
                     await db.commit()
                 except Exception as db_err:
-                    print(f"❌ [{device.id}] Failed to save sensor data: {db_err}")
+                    print(f"❌ [{device.id}] Failed to save sensor data: {type(db_err).__name__}: {db_err}")
                     await db.rollback()
-                    # Don't re-raise — a failed DB write should never kill the connection
                 
-            elif data.get("type") == "RELAY_STATUS":
+            elif msg_type == "RELAY_STATUS":
                 print(f"🔄 [{device.id}] Status Update -> Relay 1: {data.get('relay1')} | Relay 2: {data.get('relay2')}")
             
-            elif data.get("type") == "SYNC_REQUEST":
+            elif msg_type == "SYNC_REQUEST":
                 try:
-                    # Fetch this user's actual relay rows ordered by id ascending
-                    # so relay1 = lowest id, relay2 = second lowest — no hardcoding
                     relays_result = await db.execute(
                         select(RelayConfig)
                         .where(RelayConfig.owner_id == device.owner_id)
@@ -119,6 +131,7 @@ async def hardware_gateway(websocket: WebSocket, db: AsyncSession = Depends(get_
                         .limit(2)
                     )
                     relays = relays_result.scalars().all()
+                    print(f"🔍 [{device.id}] Found {len(relays)} relay(s) for owner {device.owner_id}")
 
                     relay1_state = bool(relays[0].desired_state) if len(relays) > 0 else False
                     relay2_state = bool(relays[1].desired_state) if len(relays) > 1 else False
@@ -129,21 +142,25 @@ async def hardware_gateway(websocket: WebSocket, db: AsyncSession = Depends(get_
                         "relay2": relay2_state
                     }
                     await websocket.send_json(sync_payload)
-                    print(f"✅ [{device.id}] SYNC_RESPONSE sent -> R1:{relay1_state} (id:{relays[0].id if relays else 'N/A'}) | R2:{relay2_state} (id:{relays[1].id if len(relays) > 1 else 'N/A'})")
+                    print(f"✅ [{device.id}] SYNC_RESPONSE sent -> R1:{relay1_state} | R2:{relay2_state}")
 
                 except Exception as sync_err:
-                    print(f"❌ [{device.id}] SYNC_REQUEST failed: {sync_err}")
+                    print(f"❌ [{device.id}] SYNC_REQUEST failed: {type(sync_err).__name__}: {sync_err}")
                     await db.rollback()
-                    # Send safe defaults so the ESP8266 doesn't hang waiting for a response
                     await websocket.send_json({"type": "SYNC_RESPONSE", "relay1": False, "relay2": False})
+
+            else:
+                print(f"⚠️ [{device.id}] Unknown message type: {msg_type}")
                 
-    except WebSocketDisconnect:
-        print(f"⚠️ [{device.id}] Hardware Disconnected.")
+    except WebSocketDisconnect as wd:
+        print(f"⚠️ [{device.id}] Hardware Disconnected. Code: {wd.code}")
         manager.disconnect(device.id)
     except Exception as e:
-        print(f"❌ WebSocket Error: {str(e)}")
+        import traceback
+        print(f"❌ [{device.id}] FATAL WebSocket Error: {type(e).__name__}: {e}")
+        print(traceback.format_exc())  # Full stack trace
         await db.rollback()
-        manager.disconnect(device.id)  # Also clean up manager on unexpected errors
+        manager.disconnect(device.id)
 
 # --- 5. Resolve User ID Dependency ---
 async def get_current_user_id(
