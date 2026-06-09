@@ -26,6 +26,8 @@ class DeviceConnectionManager:
     def __init__(self):
         self.active_connections: Dict[str, WebSocket] = {}
         self.online_status: Dict[str, bool] = {}
+        # Tracks if the device was previously drawing power
+        self.was_drawing_power: Dict[str, bool] = {}
 
     def connect(self, device_id: str, websocket: WebSocket):
         self.active_connections[device_id] = websocket
@@ -117,20 +119,53 @@ async def hardware_gateway(websocket: WebSocket, db: AsyncSession = Depends(get_
 
             if msg_type == "SENSOR_DATA":
                 try:
-                    print(f"📡 [{device.id}] SENSOR_DATA -> V:{data.get('voltage')} I:{data.get('current')} P:{data.get('power')}")
-                    new_reading = SensorData(
-                        owner_id=device.owner_id,
-                        voltage_val=float(data.get("voltage", 0.0)),
-                        current_val=float(data.get("current", 0.0)),
-                        inst_power_val=float(data.get("power", 0.0)),
-                        avg_current_val=float(data.get("avg_current", 0.0)),
-                        avg_power_val=float(data.get("avg_power", 0.0))
-                    )
-                    db.add(new_reading)
+                    # 1. Extract values
+                    voltage = float(data.get("voltage", 0.0))
+                    current = float(data.get("current", 0.0))
+                    power = float(data.get("power", 0.0))
+                    avg_current = float(data.get("avg_current", 0.0))
+                    avg_power = float(data.get("avg_power", 0.0))
+
+                    # 2. Determine Current State
+                    # Consider anything under 0.5 Watts as "Zero" to account for tiny fluctuations
+                    is_drawing_power = power > 0.5 
+                    was_drawing_power = manager.was_drawing_power.get(device.id, True)
+
+                    # 3. The Filtering Logic
+                    should_save = False
+
+                    if is_drawing_power:
+                        # Rule A: Always save if it's actively consuming power
+                        should_save = True
+                    elif was_drawing_power and not is_drawing_power:
+                        # Rule B: Save exactly ONE zero-reading when it turns off
+                        should_save = True
+                    else:
+                        # Rule C: Ignore continuous zero readings
+                        should_save = False
+
+                    # 4. Save to DB if required
+                    if should_save:
+                        new_reading = SensorData(
+                            owner_id=device.owner_id,
+                            voltage_val=voltage,
+                            current_val=current,
+                            inst_power_val=power,
+                            avg_current_val=avg_current,
+                            avg_power_val=avg_power
+                        )
+                        db.add(new_reading)
+                        
+                    # 5. ALWAYS update the 'last_seen' timestamp, even if we drop the DB write
+                    # This proves the device is online, even if it's using 0W
                     device.last_seen = datetime.now(timezone.utc)
                     await db.commit()
+
+                    # 6. Update the state tracker
+                    manager.was_drawing_power[device.id] = is_drawing_power
+
                 except Exception as db_err:
-                    print(f"❌ [{device.id}] Failed to save sensor data: {db_err}")
+                    print(f"❌ [{device.id}] Failed to process sensor data: {db_err}")
                     await db.rollback()
 
             elif msg_type == "RELAY_STATUS":
