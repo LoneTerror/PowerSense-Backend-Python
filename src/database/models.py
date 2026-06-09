@@ -25,6 +25,7 @@ class RelayConfig(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    device_id = Column(String, ForeignKey("hardware_devices.id", ondelete="CASCADE"), nullable=True)
     owner = relationship("User", backref="relays")
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)

@@ -278,16 +278,14 @@ async def toggle_relay(
     relays_result = await db.execute(
         select(RelayConfig)
         .where(RelayConfig.owner_id == user_id)
+        .where(RelayConfig.device_id == payload.device_id)
         .order_by(RelayConfig.id.asc())
     )
     relays = relays_result.scalars().all()
 
     relay_index = payload.relay - 1
     if relay_index < 0 or relay_index >= len(relays):
-        raise HTTPException(
-            status_code=404,
-            detail=f"Relay {payload.relay} not found for this user."
-        )
+        raise HTTPException(status_code=404, detail="Relay not found on this device.")
 
     relay = relays[relay_index]
     relay.desired_state = payload.state
