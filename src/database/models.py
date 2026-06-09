@@ -177,3 +177,5 @@ class HardwareDevice(Base):
     hashed_secret = Column(String, nullable=False)    # Bcrypt hash of the hardware token
     is_active = Column(Boolean, default=True)         # Master kill-switch
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    is_online = Column(Boolean, default=False, nullable=False)
+    last_seen = Column(DateTime(timezone=True), nullable=True)
