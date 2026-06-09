@@ -153,14 +153,13 @@ async def hardware_gateway(websocket: WebSocket, db: AsyncSession = Depends(get_
                 print(f"⚠️ [{device.id}] Unknown message type: {msg_type}")
                 
     except WebSocketDisconnect as wd:
-        print(f"⚠️ [{device.id}] Hardware Disconnected. Code: {wd.code}")
-        manager.disconnect(device.id)
+        print(f"⚠️ [{device.id}] Hardware Disconnected. Code: {wd.code} — Relays holding last state.")
+
     except Exception as e:
         import traceback
         print(f"❌ [{device.id}] FATAL WebSocket Error: {type(e).__name__}: {e}")
-        print(traceback.format_exc())  # Full stack trace
+        print(traceback.format_exc())
         await db.rollback()
-        manager.disconnect(device.id)
 
 # --- 5. Resolve User ID Dependency ---
 async def get_current_user_id(
