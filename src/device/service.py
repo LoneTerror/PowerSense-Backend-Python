@@ -8,7 +8,14 @@ async def get_all_configs(user_id: int, db: AsyncSession):
     # 🔒 SECURE: Filters the database so the user only sees THEIR devices
     query = select(RelayConfig).where(RelayConfig.owner_id == user_id).order_by(RelayConfig.id.asc())
     result = await db.execute(query)
-    return result.scalars().all()
+    relays = result.scalars().all()
+    
+    # Convert legacy NULL device_ids to empty strings so Pydantic and Android don't crash when trying to read them.
+    for relay in relays:
+        if relay.device_id is None:
+            relay.device_id = ""
+            
+    return relays
 
 async def update_config(relay_id: int, user_id: int, payload: RelayConfigUpdate, db: AsyncSession):
     # 🔒 SECURE: Ensures the user actually owns the relay before allowing an update
