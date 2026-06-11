@@ -30,6 +30,9 @@ class RelayConfig(Base):
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     desired_state = Column(Boolean, default=False)
+    physical_pin = Column(Integer, nullable=False, default=1)
+    threshold = Column(Float, nullable=True)
+    threshold_unit = Column(String, default="A")
 
 class RelayLog(Base):
     __tablename__ = "relay_log"

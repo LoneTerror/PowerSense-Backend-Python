@@ -19,13 +19,20 @@ async def update_config(relay_id: int, user_id: int, payload: RelayConfigUpdate,
     if relay:
         relay.name = payload.name
         relay.description = payload.description
+        relay.device_id = payload.device_id           
+        relay.physical_pin = payload.physical_pin     
+        relay.threshold = payload.threshold
+        relay.threshold_unit = payload.threshold_unit
     else:
-        # If the relay doesn't exist yet, create it and assign it to this specific user!
         new_relay = RelayConfig(
             id=relay_id, 
             owner_id=user_id, 
             name=payload.name, 
-            description=payload.description
+            description=payload.description,
+            device_id=payload.device_id,              
+            physical_pin=payload.physical_pin,        
+            threshold=payload.threshold,
+            threshold_unit=payload.threshold_unit
         )
         db.add(new_relay)
         
