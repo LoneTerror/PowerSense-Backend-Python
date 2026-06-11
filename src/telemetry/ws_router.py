@@ -279,15 +279,15 @@ async def toggle_relay(
         select(RelayConfig)
         .where(RelayConfig.owner_id == user_id)
         .where(RelayConfig.device_id == payload.device_id)
-        .order_by(RelayConfig.id.asc())
     )
     relays = relays_result.scalars().all()
 
-    relay_index = payload.relay - 1
-    if relay_index < 0 or relay_index >= len(relays):
-        raise HTTPException(status_code=404, detail="Relay not found on this device.")
+    # Find the relay by its actual Physical Pin, NOT array indexing
+    relay = next((r for r in relays if r.physical_pin == payload.relay), None)
 
-    relay = relays[relay_index]
+    if not relay:
+        raise HTTPException(status_code=404, detail=f"No switch configured for Pin {payload.relay} on this device.")
+
     relay.desired_state = payload.state
     await db.commit()
 
